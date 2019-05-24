@@ -12,7 +12,7 @@ services:
       - "${TVDIR}:/media/tv"
       - "${MOVIESDIR}:/media/movies"
       - /etc/localtime:/etc/localtime:ro
-    user: "1000:1000"
+    user: "1000:1004"
     labels:
       - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.${DOMAIN}`)"
   sonarr:
@@ -27,14 +27,14 @@ services:
       - TZ=${TZ}
     volumes:
       - ./sonarr:/config
-      - ${DLDIR}/completed:/downloads
+      - ${DLDIR}/completed:/downloads/completed
       - ${TVDIR}:/tv
       - /etc/localtime:/etc/localtime:ro
     depends_on:
       - jackett
       - deluge
     labels:
-      - "traefik.http.routers.sonarr.rule=Host(`sonarr.${DOMAIN})"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.${DOMAIN}`)"
   radarr:
     container_name: radarr
     image: linuxserver/radarr
@@ -54,7 +54,7 @@ services:
       - jackett
       - deluge
     labels:
-      - "traefik.http.routers.radarr.rule=Host(`radarr.${DOMAIN})"
+      - "traefik.http.routers.radarr.rule=Host(`radarr.${DOMAIN}`)"
   ombi:
     image: linuxserver/ombi
     container_name: ombi
@@ -68,7 +68,7 @@ services:
       - ./ombi:/config
       - /etc/localtime:/etc/localtime:ro
     labels:
-      - "traefik.http.routers.ombi.rule=Host(`ombi.${DOMAIN})"
+      - "traefik.http.routers.ombi.rule=Host(`ombi.${DOMAIN}`)"
     depends_on:
       - radarr
       - sonarr
@@ -89,6 +89,8 @@ services:
       - ./deluge:/config
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
+    labels:
+      - "traefik.http.routers.deluge.rule=Host(`deluge.${DOMAIN}`)"
   jackett:
     image: linuxserver/jackett
     container_name: jackett
@@ -103,14 +105,14 @@ services:
       - ${DLDIR}/completed:/downloads
       - /etc/localtime:/etc/localtime:ro
     labels:
-      - "traefik.http.routers.jackett.rule=Host(`jackett.${DOMAIN})"
+      - "traefik.http.routers.jackett.rule=Host(`jackett.${DOMAIN}`)"
   heimdall:
     image: linuxserver/heimdall
     container_name: heimdall
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=Europe/London
+      - TZ=${TZ}
     volumes:
       - ./heimdall:/config
     ports:
@@ -127,3 +129,18 @@ services:
       - "9090:8080" # The Web UI (enabled by --api)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events
+  dns:
+    container_name: dns
+    image: abcminiuser/docker-dns-ad-blocker:latest
+    network_mode: "host"
+    volumes:
+      - /home/ben/dnsmasq:/etc/dnsmasq.d/
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    environment:
+      - DEBUG=2
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    restart: unless-stopped
